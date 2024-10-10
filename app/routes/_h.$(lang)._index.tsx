@@ -262,17 +262,8 @@ export default function Index() {
 				</div>
 			) : (
 				<div className="flex flex-col flex-1 max-w-md w-full min-h-0 p-2 pt-8 gap-2">
-					{locale?.features.map((feature, idx) => (
-						<div key={`feature-${idx}`} className="flex gap-4 p-2">
-							{featureIcons[idx]}
-							<div className="flex flex-1 flex-col gap-4">
-								<span className="font-bold">{feature.title}</span>
-								<span className="text-sm text-muted-foreground">
-									{feature.description}
-								</span>
-							</div>
-						</div>
-					))}
+					<p>Conchbrain Temporary email</p>
+					<p>Powered by <a href="https://github.com/akazwz/smail" target="_blank">Smail</a></p>
 				</div>
 			)}
 		</div>
