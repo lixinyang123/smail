@@ -131,13 +131,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	return null;
 }
 
-const featureIcons = [
-	<CodeIcon className="text-blue-500" />,
-	<CircleDollarSignIcon className="text-blue-500" />,
-	<SwatchBookIcon className="text-blue-500" />,
-	<ShieldIcon className="text-blue-500" />,
-];
-
 export default function Index() {
 	const { lang, locale, turnstileSiteKey, email, emails } =
 		useLoaderData<typeof loader>();
