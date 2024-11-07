@@ -16,3 +16,6 @@ binding = "DB"
 database_name = "smail"
 database_id = "df251d4a-e1ee-4edd-a9e0-b0fa840cbb54"
 migrations_dir = "app/drizzle"
+
+[vars]
+DOMAIN = 'conchbrain.club'
