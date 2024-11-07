@@ -103,7 +103,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	const session = await getSession(request.headers.get("Cookie"));
 	const { pathname } = new URL(request.url);
 	const name = `${randomName("", ".")}.${customAlphabet("0123456789", 4)()}`;
-	const email = `${name}@${context.cloudflare.env.DOMAIN || "smail.pw"}`;
+	const email = `${name}@${context.cloudflare.env.DOMAIN || "conchbrain.club"}`;
 	switch (request.method) {
 		case "POST": {
 			if (session.data.email) {

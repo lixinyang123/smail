@@ -10,6 +10,9 @@ import { isbot } from "isbot"
 import { renderToReadableStream } from "react-dom/server"
 import { d1Wrapper } from "~/.server/db"
 import { sessionWrapper } from "~/.server/session"
+import randomName from "@scaleway/random-name"
+import { customAlphabet } from "nanoid"
+import { formatDistanceToNow } from "date-fns";
 
 export default async function handleRequest(
 	request: Request,
@@ -18,16 +21,16 @@ export default async function handleRequest(
 	remixContext: EntryContext,
 	loadContext: AppLoadContext
 ) {
-	let url = new URL(request.url).pathname
-
-	switch (true) {
-		case url.startsWith('/api'):
-			return handleApi(request, loadContext)
-	
-		default:
-			return handlePage(request, responseStatusCode, responseHeaders, remixContext)
+	if (new URL(request.url).pathname.startsWith('/api')) {
+		return handleApi(request, loadContext)
 	}
+
+	return handlePage(request, responseStatusCode, responseHeaders, remixContext)
 }
+
+/**
+ * SSR
+ */
 
 async function handlePage(request: Request, responseStatusCode: number,
 	responseHeaders: Headers, remixContext: EntryContext) {
@@ -36,7 +39,6 @@ async function handlePage(request: Request, responseStatusCode: number,
 		{
 			signal: request.signal,
 			onError(error: unknown) {
-				// Log streaming rendering errors from inside the shell
 				console.error(error)
 				responseStatusCode = 500
 			}
@@ -55,13 +57,25 @@ async function handlePage(request: Request, responseStatusCode: number,
 	})
 }
 
+/**
+ * Web API
+ */
+
 async function handleApi(request: Request, context: AppLoadContext) {
-	const db = d1Wrapper(context.cloudflare.env.DB)
+	switch (request.method) {
+		case 'GET': return mapGet(request, context)
+		case 'POST': return mapPost(request, context)
+		case 'DELETE': return mapDelete(request, context)
+		default: return new Response("not found", { status: 404 })
+	}
+}
+
+async function mapGet(request: Request, context: AppLoadContext) {
 	const { getSession } = sessionWrapper(context.cloudflare.env)
-
 	const session = await getSession(request.headers.get("Cookie"))
+	const db = d1Wrapper(context.cloudflare.env.DB)
 
-	let emails = await db.query.emails.findMany({
+	const emails = await db.query.emails.findMany({
 		columns: {
 			id: true,
 			subject: true,
@@ -73,5 +87,50 @@ async function handleApi(request: Request, context: AppLoadContext) {
 		}
 	})
 
-	return new Response(JSON.stringify(emails))
+	const newEails = emails.map((email) => ({
+		...email,
+		createdAt: formatDistanceToNow(email.createdAt, {
+			addSuffix: true
+		})
+	}))
+
+	return new Response(JSON.stringify({
+		emails: newEails,
+		turnstileSiteKey: context.cloudflare.env.TURNSTILE_SITE_KEY,
+	}))
+}
+
+async function mapPost(request: Request, context: AppLoadContext) {
+	const { getSession, commitSession } = sessionWrapper(context.cloudflare.env)
+	const session = await getSession(request.headers.get("Cookie"))
+
+	if (session.data.email) {
+		return new Response('bad request', { status: 500 })
+	}
+
+	const name = `${randomName("", ".")}.${customAlphabet("0123456789", 4)()}`
+	const email = `${name}@${context.cloudflare.env.DOMAIN || "conchbrain.club"}`
+
+	session.set("email", email)
+	return new Response(email, {
+		headers: {
+			"Set-Cookie": await commitSession(session),
+		}
+	})
+}
+
+async function mapDelete(request: Request, context: AppLoadContext) {
+	const { getSession, commitSession } = sessionWrapper(context.cloudflare.env)
+	const session = await getSession(request.headers.get("Cookie"))
+
+	if (!session.data.email) {
+		return new Response('bad request', { status: 500 })
+	}
+
+	session.unset("email");
+	return new Response(session.data.email, {
+		headers: {
+			"Set-Cookie": await commitSession(session)
+		}
+	})
 }
